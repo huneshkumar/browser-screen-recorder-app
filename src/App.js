@@ -1,24 +1,202 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useRef, useState } from 'react';
+import {
+  Box,
+  Button,
+  Container,
+  Heading,
+  Stack,
+  Text,
+  VStack,
+  useBreakpointValue,
+} from '@chakra-ui/react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import PptxGenJS from 'pptxgenjs';
 
 function App() {
+  const [recording, setRecording] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [slides, setSlides] = useState([]);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunks = useRef([]);
+  const isMobile = useBreakpointValue({ base: true, md: false });
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      recordedChunks.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunks.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(recordedChunks.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setVideoUrl(url);
+      };
+
+      mediaRecorderRef.current.start();
+      setRecording(true);
+    } catch (err) {
+      toast.error('Could not start screen recording.');
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current.stop();
+    setRecording(false);
+  };
+
+  const downloadRecording = () => {
+    const blob = new Blob(recordedChunks.current, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'screen-recording.webm';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const convertVideoToSlides = () => {
+    if (!videoUrl) return;
+    const video = document.createElement('video');
+    video.src = videoUrl;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const slidesArray = [];
+    const interval = 3;
+
+    video.onloadeddata = () => {
+      video.play();
+      video.currentTime = 0;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const captureFrame = () => {
+        if (video.currentTime < video.duration) {
+          setTimeout(() => {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageUrl = canvas.toDataURL('image/png');
+            slidesArray.push(imageUrl);
+            video.currentTime += interval;
+            captureFrame();
+          }, 100);
+        } else {
+          setSlides(slidesArray);
+          toast.success('Slides created from video!');
+        }
+      };
+
+      captureFrame();
+    };
+
+    video.onerror = () => {
+      toast.error('Error processing video');
+    };
+  };
+
+  const downloadSlidesAsPPT = () => {
+    if (!slides.length) return;
+    const pptx = new PptxGenJS();
+    slides.forEach((slideImg) => {
+      const slide = pptx.addSlide();
+      slide.background = { data: slideImg };
+    });
+    pptx.writeFile('ScreenRecordingSlides.pptx');
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Box bg="gray.900" minH="100vh" py={10} px={4} color="white">
+      <Container maxW="container.xl">
+        <VStack spacing={10}>
+          <Box textAlign="center" py={20}>
+            <Heading fontSize={['4xl', '5xl']} fontWeight="bold">
+              Capture Your Screen, Effortlessly.
+            </Heading>
+            <Text fontSize={['md', 'xl']} color="gray.400" mt={4}>
+              Use our live screen recording tool to record your screen in high-quality webm format.
+            </Text>
+            <Stack direction={['column', 'row']} spacing={6} justify="center" mt={6}>
+              <Button colorScheme="teal" size="lg" onClick={startRecording}>
+                Start Recording
+              </Button>
+              <Button colorScheme="blue" size="lg" variant="outline" onClick={() => toast.info('Live demo coming soon!')}>
+                Watch Live Demo
+              </Button>
+            </Stack>
+          </Box>
+
+          <Box bg="gray.800" w="full" p={10} borderRadius="lg" boxShadow="lg">
+            <Heading as="h2" size="lg" textAlign="center" mb={6}>
+              Record Your Screen Now
+            </Heading>
+
+            <Stack direction={['column', 'row']} spacing={6} align="center">
+              {!recording ? (
+                <Button colorScheme="green" size="lg" onClick={startRecording}>
+                  Start Recording
+                </Button>
+              ) : (
+                <Button colorScheme="red" size="lg" onClick={stopRecording}>
+                  Stop Recording
+                </Button>
+              )}
+              {videoUrl && (
+                <Button colorScheme="blue" size="lg" onClick={downloadRecording}>
+                  Download Recording
+                </Button>
+              )}
+            </Stack>
+
+            {videoUrl && (
+              <Box mt={6} textAlign="center">
+                <video src={videoUrl} controls width="100%" style={{ borderRadius: '10px' }} />
+              </Box>
+            )}
+
+            {videoUrl && (
+              <Box mt={6} textAlign="center">
+                <Button colorScheme="purple" onClick={convertVideoToSlides}>
+                  Convert Video to Slides
+                </Button>
+              </Box>
+            )}
+
+            {slides.length > 0 && (
+              <Box mt={6}>
+                <Heading as="h3" size="md" textAlign="center" mb={4}>
+                  Your Slides
+                </Heading>
+                <Stack direction="row" spacing={6} overflowX="auto">
+                  {slides.map((slide, index) => (
+                    <Box key={index} width="300px" height="200px">
+                      <img src={slide} alt={`Slide ${index + 1}`} width="100%" height="100%" />
+                    </Box>
+                  ))}
+                </Stack>
+                <Box mt={4} textAlign="center">
+                  <Button colorScheme="teal" onClick={downloadSlidesAsPPT}>
+                    Download Slides as PPT
+                  </Button>
+                </Box>
+              </Box>
+            )}
+          </Box>
+
+          <Box py={10} textAlign="center" color="gray.400">
+            <Text>&copy; 2025 ScreenRec. All Rights Reserved.</Text>
+          </Box>
+        </VStack>
+      </Container>
+      <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
+    </Box>
   );
 }
 

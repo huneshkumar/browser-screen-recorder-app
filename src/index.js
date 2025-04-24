@@ -1,17 +1,28 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import App from './App';
-import reportWebVitals from './reportWebVitals';
+import {
+  ChakraProvider,
+  createSystem,
+  defaultConfig,
+  defineConfig,
+} from "@chakra-ui/react"
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+const config = defineConfig({
+  theme: {
+    tokens: {
+      colors: {},
+    },
+  },
+})
 
+const system = createSystem(defaultConfig, config)
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
+  <ChakraProvider value={system}>
+          <ToastContainer />
     <App />
-  </React.StrictMode>
-);
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+  </ChakraProvider>
+);
