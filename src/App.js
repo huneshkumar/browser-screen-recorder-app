@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -8,7 +8,6 @@ import {
   Text,
   VStack,
   useBreakpointValue,
-  Portal,
   Input,
 } from '@chakra-ui/react';
 import { toast, ToastContainer } from 'react-toastify';
@@ -19,20 +18,18 @@ function App() {
   const [recording, setRecording] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
   const [slides, setSlides] = useState([]);
-  const [captureInterval, setCaptureInterval] = useState(3);
+  const [intervalSec, setIntervalSec] = useState(3);
   const mediaRecorderRef = useRef(null);
   const recordedChunks = useRef([]);
   const isMobile = useBreakpointValue({ base: true, md: false });
-  const [stream, setStream] = useState(null);
 
   const startRecording = async () => {
     try {
-      const streamData = await navigator.mediaDevices.getDisplayMedia({
+      const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
       });
-      setStream(streamData);
-      mediaRecorderRef.current = new MediaRecorder(streamData);
+      mediaRecorderRef.current = new MediaRecorder(stream);
       recordedChunks.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -56,7 +53,6 @@ function App() {
 
   const stopRecording = () => {
     mediaRecorderRef.current.stop();
-    stream.getTracks().forEach(track => track.stop());
     setRecording(false);
   };
 
@@ -70,19 +66,14 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
-  const convertVideoToSlides = () => {
-    if (!videoUrl) return;
+  const convertVideoToSlides = (videoSrc = videoUrl) => {
+    if (!videoSrc) return;
     const video = document.createElement('video');
-    video.src = videoUrl;
+    video.src = videoSrc;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const slidesArray = [];
-    const interval = parseFloat(captureInterval);
-
-    if (isNaN(interval) || interval <= 0) {
-      toast.error('Please enter a valid capture interval.');
-      return;
-    }
+    const interval = parseFloat(intervalSec);
 
     video.onloadeddata = () => {
       video.play();
@@ -123,6 +114,15 @@ function App() {
     pptx.writeFile('ScreenRecordingSlides.pptx');
   };
 
+  const handleVideoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setVideoUrl(url);
+      toast.success('Video uploaded successfully! Now convert to slides.');
+    }
+  };
+
   return (
     <Box bg="gray.900" minH="100vh" py={10} px={4} color="white">
       <Container maxW="container.xl">
@@ -132,7 +132,7 @@ function App() {
               Capture Your Screen, Effortlessly.
             </Heading>
             <Text fontSize={['md', 'xl']} color="gray.400" mt={4}>
-              Use our live screen recording tool to record your screen in high-quality webm format.
+              Use our live screen recording tool to record your screen in high-quality webm format or upload and convert to slides.
             </Text>
             <Stack direction={['column', 'row']} spacing={6} justify="center" mt={6}>
               <Button colorScheme="teal" size="lg" onClick={startRecording}>
@@ -146,10 +146,10 @@ function App() {
 
           <Box bg="gray.800" w="full" p={10} borderRadius="lg" boxShadow="lg">
             <Heading as="h2" size="lg" textAlign="center" mb={6}>
-              Record Your Screen Now
+              Record or Upload Your Screen
             </Heading>
 
-            <Stack direction={['column', 'row']} spacing={6} align="center">
+            <Stack direction={['column', 'row']} spacing={6} align="center" justify="center">
               {!recording ? (
                 <Button colorScheme="green" size="lg" onClick={startRecording}>
                   Start Recording
@@ -159,6 +159,7 @@ function App() {
                   Stop Recording
                 </Button>
               )}
+              <Input type="file" accept="video/*" onChange={handleVideoUpload} width="auto" color="white" />
               {videoUrl && (
                 <Button colorScheme="blue" size="lg" onClick={downloadRecording}>
                   Download Recording
@@ -174,16 +175,17 @@ function App() {
 
             {videoUrl && (
               <Box mt={6} textAlign="center">
-                <Text mb={2}>Capture Interval (seconds):</Text>
+                <Text mb={2}>Capture Interval (sec):</Text>
                 <Input
                   type="number"
-                  width="200px"
+                  min={1}
+                  value={intervalSec}
+                  onChange={(e) => setIntervalSec(e.target.value)}
+                  maxW="100px"
                   mx="auto"
-                  mb={4}
-                  value={captureInterval}
-                  onChange={(e) => setCaptureInterval(e.target.value)}
+                  textAlign="center"
                 />
-                <Button colorScheme="purple" onClick={convertVideoToSlides}>
+                <Button mt={4} colorScheme="purple" onClick={() => convertVideoToSlides(videoUrl)}>
                   Convert Video to Slides
                 </Button>
               </Box>
@@ -221,28 +223,6 @@ function App() {
           </Box>
         </VStack>
       </Container>
-
-      {recording && (
-        <Portal>
-          <Box
-            position="fixed"
-            bottom="20px"
-            right="20px"
-            bg="red.500"
-            color="white"
-            px={4}
-            py={2}
-            borderRadius="full"
-            boxShadow="lg"
-            zIndex="popover"
-          >
-            <Button variant="link" color="white" onClick={stopRecording}>
-              Stop Recording
-            </Button>
-          </Box>
-        </Portal>
-      )}
-
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
     </Box>
   );
