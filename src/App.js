@@ -9,9 +9,13 @@ import {
   VStack,
   useBreakpointValue,
   Input,
+  Icon,
+  Flex,
+  useColorModeValue,
 } from '@chakra-ui/react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { FaUpload } from 'react-icons/fa';
 import PptxGenJS from 'pptxgenjs';
 
 function App() {
@@ -132,7 +136,7 @@ function App() {
               Capture Your Screen, Effortlessly.
             </Heading>
             <Text fontSize={['md', 'xl']} color="gray.400" mt={4}>
-              Use our live screen recording tool to record your screen in high-quality webm format or upload and convert to slides.
+              Record your screen or upload a video and convert to professional slides in one click.
             </Text>
             <Stack direction={['column', 'row']} spacing={6} justify="center" mt={6}>
               <Button colorScheme="teal" size="lg" onClick={startRecording}>
@@ -144,12 +148,12 @@ function App() {
             </Stack>
           </Box>
 
-          <Box bg="gray.800" w="full" p={10} borderRadius="lg" boxShadow="lg">
+          <Box bg="gray.800" w="full" p={10} borderRadius="lg" boxShadow="2xl">
             <Heading as="h2" size="lg" textAlign="center" mb={6}>
-              Record or Upload Your Screen
+              Upload or Record Your Screen
             </Heading>
 
-            <Stack direction={['column', 'row']} spacing={6} align="center" justify="center">
+            <Stack direction={['column', 'row']} spacing={6} align="center" justify="center" wrap="wrap">
               {!recording ? (
                 <Button colorScheme="green" size="lg" onClick={startRecording}>
                   Start Recording
@@ -159,7 +163,33 @@ function App() {
                   Stop Recording
                 </Button>
               )}
-              <Input type="file" accept="video/*" onChange={handleVideoUpload} width="auto" color="white" />
+              <Flex
+                align="center"
+                justify="center"
+                p={2}
+                borderRadius="md"
+                borderWidth={2}
+                borderStyle="dashed"
+                borderColor="gray.600"
+                _hover={{ borderColor: 'gray.400' }}
+                cursor="pointer"
+                position="relative"
+              >
+                <Icon as={FaUpload} mr={2} />
+                <Text>Upload Video</Text>
+                <Input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoUpload}
+                  position="absolute"
+                  top={0}
+                  left={0}
+                  width="100%"
+                  height="100%"
+                  opacity={0}
+                  cursor="pointer"
+                />
+              </Flex>
               {videoUrl && (
                 <Button colorScheme="blue" size="lg" onClick={downloadRecording}>
                   Download Recording
@@ -196,7 +226,7 @@ function App() {
                 <Heading as="h3" size="md" textAlign="center" mb={4}>
                   Slide Previews
                 </Heading>
-                <Stack direction="row" spacing={6} overflowX="auto" p={4}>
+                <Stack direction="row" spacing={6} overflowX="auto" p={4} justify="center">
                   {slides.map((slide, index) => (
                     <Box key={index} width="300px" height="200px" flexShrink={0}>
                       <img
