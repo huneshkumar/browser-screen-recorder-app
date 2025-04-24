@@ -172,12 +172,18 @@ function App() {
             {slides.length > 0 && (
               <Box mt={6}>
                 <Heading as="h3" size="md" textAlign="center" mb={4}>
-                  Your Slides
+                  Slide Previews
                 </Heading>
-                <Stack direction="row" spacing={6} overflowX="auto">
+                <Stack direction="row" spacing={6} overflowX="auto" p={4}>
                   {slides.map((slide, index) => (
-                    <Box key={index} width="300px" height="200px">
-                      <img src={slide} alt={`Slide ${index + 1}`} width="100%" height="100%" />
+                    <Box key={index} width="300px" height="200px" flexShrink={0}>
+                      <img
+                        src={slide}
+                        alt={`Slide ${index + 1}`}
+                        width="100%"
+                        height="100%"
+                        style={{ borderRadius: '10px', objectFit: 'cover' }}
+                      />
                     </Box>
                   ))}
                 </Stack>
