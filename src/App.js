@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -8,6 +8,8 @@ import {
   Text,
   VStack,
   useBreakpointValue,
+  Portal,
+  Input,
 } from '@chakra-ui/react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -17,17 +19,20 @@ function App() {
   const [recording, setRecording] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
   const [slides, setSlides] = useState([]);
+  const [captureInterval, setCaptureInterval] = useState(3);
   const mediaRecorderRef = useRef(null);
   const recordedChunks = useRef([]);
   const isMobile = useBreakpointValue({ base: true, md: false });
+  const [stream, setStream] = useState(null);
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      const streamData = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
       });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      setStream(streamData);
+      mediaRecorderRef.current = new MediaRecorder(streamData);
       recordedChunks.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -51,6 +56,7 @@ function App() {
 
   const stopRecording = () => {
     mediaRecorderRef.current.stop();
+    stream.getTracks().forEach(track => track.stop());
     setRecording(false);
   };
 
@@ -71,7 +77,12 @@ function App() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const slidesArray = [];
-    const interval = 3;
+    const interval = parseFloat(captureInterval);
+
+    if (isNaN(interval) || interval <= 0) {
+      toast.error('Please enter a valid capture interval.');
+      return;
+    }
 
     video.onloadeddata = () => {
       video.play();
@@ -163,6 +174,15 @@ function App() {
 
             {videoUrl && (
               <Box mt={6} textAlign="center">
+                <Text mb={2}>Capture Interval (seconds):</Text>
+                <Input
+                  type="number"
+                  width="200px"
+                  mx="auto"
+                  mb={4}
+                  value={captureInterval}
+                  onChange={(e) => setCaptureInterval(e.target.value)}
+                />
                 <Button colorScheme="purple" onClick={convertVideoToSlides}>
                   Convert Video to Slides
                 </Button>
@@ -201,6 +221,28 @@ function App() {
           </Box>
         </VStack>
       </Container>
+
+      {recording && (
+        <Portal>
+          <Box
+            position="fixed"
+            bottom="20px"
+            right="20px"
+            bg="red.500"
+            color="white"
+            px={4}
+            py={2}
+            borderRadius="full"
+            boxShadow="lg"
+            zIndex="popover"
+          >
+            <Button variant="link" color="white" onClick={stopRecording}>
+              Stop Recording
+            </Button>
+          </Box>
+        </Portal>
+      )}
+
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
     </Box>
   );
